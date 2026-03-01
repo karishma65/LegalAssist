@@ -1,40 +1,50 @@
-# LegalAssist – AI-Assisted Case Analysis Platform
+# LegalAssist –  AI-Based Interactive Legal Assistance System with Automated Case Intake and Claim–Evidence Consistency Analysis
+
+## Overview
 
 LegalAssist is a full-stack AI-powered legal case management platform designed to assist lawyers in analyzing cases efficiently and generating structured, lawyer-ready reports.
 
-It enables clients to submit case details, upload supporting evidence, answer AI-generated follow-up questions, and allows lawyers to review AI-driven risk analysis before generating a final structured PDF report.
+The system enables clients to submit case details, upload supporting evidence, answer AI-generated follow-up questions, and allows lawyers to review AI-driven risk analysis before generating a final structured PDF report.
+
+---
 
 ## Features
 
 ### Client Side
 - Case intake form submission
-- Auto-extraction of legal claims
+- Automatic extraction of legal claims
 - Evidence upload per claim
 - AI-generated follow-up questions
-- Risk & gap analysis preview
+- Risk and gap analysis preview
 - Case progress tracking
 - Lawyer assignment system
 
-###  Lawyer Side
+### Lawyer Side
 - View assigned cases
 - Full case review dashboard
-- AI-powered claim & risk analysis
-- Approve & run full AI pipeline
+- AI-powered claim and risk analysis
+- Approve and execute complete AI pipeline
 - Generate structured lawyer-ready PDF report
 - Case status management
 
-##  AI Pipeline
+---
 
-The system uses an AI-based analysis flow:
+## AI Pipeline
 
-1. Intake Processing
-2. Claim Extraction
-3. Evidence Gap Detection
-4. Follow-up Question Generation
-5. Risk & Loophole Analysis
-6. Final Structured Report Generation
+The system follows a structured AI-based workflow:
 
-##  Tech Stack
+1. Intake Processing  
+2. Claim Extraction  
+3. Evidence Gap Detection  
+4. Follow-up Question Generation  
+5. Risk and Loophole Analysis  
+6. Final Structured Report Generation  
+
+Each stage produces structured JSON output that is processed and stored before generating the final PDF.
+
+---
+
+## Tech Stack
 
 ### Frontend
 - React (Vite)
@@ -44,71 +54,136 @@ The system uses an AI-based analysis flow:
 
 ### Backend
 - FastAPI
-- SQLAlchemy
+- SQLAlchemy ORM
 - JWT Authentication
-- Role-Based Access Control
-
-### AI Integration
-- LLM Service Layer
-- Structured JSON Output Processing
-
-### PDF Generation
-- ReportLab
+- Role-Based Access Control (RBAC)
 
 ### Database
 - PostgreSQL
 - Managed using pgAdmin 4
 
-##  Project Structure
+### AI Integration
+- LLM Service Layer
+- Structured JSON Output Processing
+- Risk and Evidence Analysis Engine
+
+### PDF Generation
+- ReportLab (Platypus for structured document generation)
+
+---
+
+## Project Structure
+
+```
 LegalAssist/
 │
 ├── backend/
-│ ├── api/
-│ ├── database/
-│ ├── auth/
-│ ├── pdf/
-│ ├── ai/
-│ └── main.py
+│   ├── api/
+│   ├── database/
+│   ├── auth/
+│   ├── pdf/
+│   ├── ai/
+│   └── main.py
 │
 ├── frontend/
-│ ├── src/
-│ │ ├── pages/
-│ │ ├── components/
-│ │ └── api/
-│ └── vite.config.js
+│   ├── src/
+│   ├── pages/
+│   ├── components/
+│   ├── api/
+│   └── vite.config.js
 │
 └── README.md
+```
 
-##  Authentication & Roles
+---
+
+## Authentication and Roles
+
+The platform implements secure role-based access control:
 
 - Client Role
 - Lawyer Role
-- JWT-based authentication
-- Protected routes (frontend & backend)
+- JWT-based Authentication
+- Protected routes (Frontend and Backend)
+- Secure API authorization headers
 
+---
 
-##  Final Output
+## Final Output
 
 The system generates a professionally formatted PDF containing:
 
 - Case Intake Summary
 - Extracted Legal Claims
-- Evidence Status
-- Follow-up Q&A
-- Risk & Loophole Analysis
+- Evidence Status Overview
+- Follow-up Questions and Answers
+- Risk and Loophole Analysis
+- Structured Legal Assessment
 
-##  How To Run Locally
+The PDF is designed to be lawyer-ready and submission-friendly.
 
-### Backend
+---
 
+## How To Run Locally
+
+### Backend Setup
+
+```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate   # Windows
+
+# Activate virtual environment (Windows)
+venv\Scripts\activate
+
 pip install -r requirements.txt
+
 uvicorn main:app --reload
+```
 
-### Frontend
+Backend runs at:
+```
+http://127.0.0.1:8000
+```
 
+---
+
+### Frontend Setup
+
+```bash
 cd frontend
 npm install
 npm run dev
+```
+
+Frontend runs at:
+```
+http://localhost:5173
+```
+
+---
+
+## System Workflow
+
+1. Client submits case details  
+2. AI extracts legal claims  
+3. Client uploads supporting evidence  
+4. AI detects gaps and generates follow-up questions  
+5. Lawyer reviews AI analysis  
+6. Lawyer approves final structured report  
+7. System generates downloadable PDF  
+
+---
+
+## Key Objectives
+
+- Reduce manual case analysis time  
+- Improve legal claim structuring  
+- Detect missing evidence early  
+- Provide structured AI-assisted risk analysis  
+- Enhance workflow efficiency for law firms  
+
+---
+
+## Author
+
+Developed by Karishma Arivazhagan
