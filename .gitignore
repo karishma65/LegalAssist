@@ -1,0 +1,22 @@
+# Python
+venv/
+vemv/
+backend/vemv/
+backend/uploads/
+__pycache__/
+*.pyc
+.env
+
+# Node
+node_modules/
+build/
+dist/
+
+# VS Code
+.vscode/
+
+# Generated files
+generated_pdfs/
+
+# OS
+.DS_Store
