@@ -54,6 +54,12 @@ def generate_report(case_id: str):
             )
 
         # =========================
+        # MARK CASE COMPLETED
+        # =========================
+        case.status = "COMPLETED"
+        db.commit()
+
+        # =========================
         # Return File
         # =========================
         return FileResponse(
