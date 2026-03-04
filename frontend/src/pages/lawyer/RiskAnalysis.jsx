@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/axiosInstance";
 import ClientProgressBar from "../../components/ClientProgressBar";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
 
 export default function RiskAnalysis() {
   const { caseId } = useParams();
@@ -9,23 +11,33 @@ export default function RiskAnalysis() {
 
   const [risk, setRisk] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [notification, setNotification] = useState(null);
 
-  const userRole = localStorage.getItem("role"); // client or lawyer
+  const userRole = localStorage.getItem("role");
 
+  // Auto hide popup
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // Fetch risk
   useEffect(() => {
     const fetchRisk = async () => {
       try {
         const res = await api.get(`/analysis/risk/${caseId}`);
-        setRisk(res.data.risk_report);
+        const riskData = res.data?.risk_report || res.data || null;
+        setRisk(riskData);
       } catch (err) {
-        console.error(err);
-
-        if (err.response?.status === 404) {
-          setError("Risk analysis not generated yet.");
-        } else {
-          setError("Failed to load risk analysis.");
-        }
+        setNotification({
+          type: "error",
+          message:
+            err.response?.status === 404
+              ? "Risk analysis not generated yet."
+              : "Failed to load risk analysis.",
+        });
       } finally {
         setLoading(false);
       }
@@ -34,133 +46,197 @@ export default function RiskAnalysis() {
     fetchRisk();
   }, [caseId]);
 
+  // ✅ Correct PDF Download Function
   const handleDownloadPDF = async () => {
     try {
-      const res = await api.post(
+      const response = await api.get(
         `/report/generate/${caseId}`,
-        {},
-        { responseType: "blob" }
+        {
+          responseType: "blob",
+          headers: {
+            Accept: "application/pdf",
+          },
+        }
       );
 
-      const url = window.URL.createObjectURL(res.data);
-      window.open(url);
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Case_Report_${caseId}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
     } catch (err) {
-      console.error(err);
-      alert("Failed to generate PDF");
+      console.error("Download error:", err);
+
+      setNotification({
+        type: "error",
+        message:
+          err.response?.data?.detail ||
+          err.message ||
+          "Failed to generate PDF.",
+      });
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading risk analysis…</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F2F8FE] font-['Playfair_Display']">
+        Loading risk analysis…
       </div>
     );
   }
 
-  if (error) {
+  if (!risk || typeof risk !== "object") {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-        <p className="text-gray-500">{error}</p>
-        <button
-          onClick={() =>
-            userRole === "lawyer"
-              ? navigate("/lawyer/cases")
-              : navigate("/client/cases")
-          }
-          className="px-6 py-2 bg-gray-200 rounded-lg"
-        >
-          Back
-        </button>
+      <div className="min-h-screen bg-[#F2F8FE] flex items-center justify-center font-['Playfair_Display']">
+        No risk data available.
       </div>
     );
-  }
-
-  if (!risk) {
-    return null;
   }
 
   return (
-    <div
-      className="min-h-screen bg-[#FAFAFA] text-[#161117]"
-      style={{ fontFamily: '"Playfair Display", serif' }}
-    >
-      {/* Header */}
-      <header className="border-b bg-white px-10 py-3 flex justify-between">
-        <h2 className="text-lg font-bold">LegalAI</h2>
-      </header>
+    <div className="min-h-screen bg-[#F2F8FE] text-[#0F172A]">
+      <AppHeader role={userRole === "lawyer" ? "Lawyer" : "Client"} />
 
-      {/* Progress only for client */}
+      {notification && (
+        <CenterPopup
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
       {userRole === "client" && (
         <ClientProgressBar currentStep={5} />
       )}
 
-      {/* Main */}
-      <main className="max-w-6xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-bold mb-2">Risk & Gap Analysis</h1>
-        <p className="text-[#7e6487] mb-8">
-          AI-identified risks, gaps, and weaknesses in this case.
-        </p>
+      <main className="max-w-[1700px] mx-auto px-12 py-16 space-y-20">
 
-        <RiskSection title="Loopholes" items={risk.loopholes} />
-        <RiskSection title="Contradictions" items={risk.contradictions} />
-        <RiskSection title="Weak Claims" items={risk.weak_claims} />
-        <RiskSection
-          title="Opponent Challenges"
+        <div className="text-center max-w-4xl mx-auto">
+          <h1
+            className="text-5xl font-bold tracking-tight"
+            style={{ fontFamily: '"Playfair Display", serif' }}
+          >
+            Risk & Gap Analysis
+          </h1>
+          <p className="text-gray-600 mt-6 text-lg leading-relaxed">
+            AI-identified structural weaknesses, evidentiary gaps,
+            and strategic vulnerabilities within the case.
+          </p>
+        </div>
+
+        <ModernRiskSection
+          title="Weak Claims"
+          items={risk.weak_claims}
+          color="yellow"
+        />
+
+        <ModernRiskSection
+          title="Loopholes & Missing Evidence"
+          items={risk.loopholes}
+          color="red"
+        />
+
+        <ModernRiskSection
+          title="Contradictions"
+          items={risk.contradictions}
+          color="orange"
+        />
+
+        <ModernRiskSection
+          title="Possible Opponent Challenges"
           items={risk.possible_opponent_challenges}
-        />
-        <RiskSection
-          title="Jurisdiction / Limitation Risks"
-          items={risk.jurisdiction_or_limitation_risks}
+          color="purple"
         />
 
-        {/* Actions */}
-        <div className="flex justify-between mt-10 border-t pt-6">
+        <ModernRiskSection
+          title="Jurisdiction & Limitation Risks"
+          items={risk.jurisdiction_or_limitation_risks}
+          color="blue"
+        />
+
+        <div className="flex justify-between items-center pt-10 border-t border-gray-200">
           <button
             onClick={() =>
               userRole === "lawyer"
                 ? navigate("/lawyer/cases")
                 : navigate("/client/cases")
             }
-            className="text-sm font-bold text-[#7e6487]"
+            className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#14B8A6] text-white font-semibold shadow-md hover:scale-105 transition duration-300"
           >
-            ← Back
+            Back
           </button>
 
-          {/* Only allow PDF if risk exists */}
           <button
             onClick={handleDownloadPDF}
-            className="px-8 py-3 rounded-lg bg-[#D78FEE] font-bold hover:opacity-90"
+            className="px-14 py-4 rounded-2xl bg-gradient-to-r from-[#5D90FF] to-[#14B8A6] text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition duration-300"
           >
-            Download PDF →
+            Download PDF
           </button>
         </div>
+
       </main>
     </div>
   );
 }
 
-/* =========================
-   Reusable Section Component
-   ========================= */
-function RiskSection({ title, items }) {
+function ModernRiskSection({ title, items, color }) {
+  const hasItems = Array.isArray(items) && items.length > 0;
+
+  const colorMap = {
+    yellow: "border-yellow-400 bg-yellow-50",
+    red: "border-red-400 bg-red-50",
+    orange: "border-orange-400 bg-orange-50",
+    purple: "border-purple-400 bg-purple-50",
+    blue: "border-blue-400 bg-blue-50",
+  };
+
   return (
-    <section className="mb-8 bg-white rounded-xl border shadow-sm">
-      <div className="px-6 py-4 border-b bg-gray-50 font-bold">
-        {title}
+    <section className="bg-white rounded-3xl shadow-lg border border-gray-200 p-14">
+      <div className="flex items-center mb-12">
+        <div className={`w-2 h-10 rounded-full ${colorMap[color].split(" ")[0]}`} />
+        <h2
+          className="ml-5 text-3xl font-bold"
+          style={{ fontFamily: '"Playfair Display", serif' }}
+        >
+          {title}
+        </h2>
       </div>
-      <div className="p-6 text-sm text-gray-700 space-y-3">
-        {items && items.length > 0 ? (
-          items.map((item, idx) => (
-            <div key={idx} className="flex gap-3">
-              <span>•</span>
-              <p>{item}</p>
+
+      {hasItems ? (
+        <div className="space-y-8">
+          {items.map((item, idx) => (
+            <div
+              key={idx}
+              className={`relative border-l-4 ${
+                colorMap[color].split(" ")[0]
+              } ${colorMap[color].split(" ")[1]} rounded-2xl p-8 shadow-sm`}
+            >
+              <div className="absolute -left-6 top-8 w-10 h-10 rounded-full bg-white border border-gray-300 flex items-center justify-center text-sm font-semibold shadow-sm">
+                {idx + 1}
+              </div>
+
+              <p className="text-gray-700 leading-relaxed ml-8 text-lg">
+                {item}
+              </p>
             </div>
-          ))
-        ) : (
-          <p className="text-gray-400">No issues identified.</p>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-gray-400 text-sm italic">
+          No issues identified.
+        </div>
+      )}
     </section>
   );
 }

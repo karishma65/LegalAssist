@@ -1,12 +1,28 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
 import api from "../../api/axiosInstance";
+import LawyerSidebar from "../../components/LawyerSidebar";
+import { Menu } from "lucide-react";
 
 export default function LawyerMyCases() {
   const navigate = useNavigate();
   const [cases, setCases] = useState([]);
   const [lawyerName, setLawyerName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Auto-hide popup
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     loadCases();
@@ -20,8 +36,10 @@ export default function LawyerMyCases() {
       const casesRes = await api.get("/cases/my");
       setCases(casesRes.data || []);
     } catch (err) {
-      console.error(err);
-      alert("Failed to load cases");
+      setNotification({
+        type: "error",
+        message: "Failed to load cases.",
+      });
     } finally {
       setLoading(false);
     }
@@ -29,104 +47,145 @@ export default function LawyerMyCases() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-lg font-semibold">
+      <div className="min-h-screen flex items-center justify-center bg-[#F2F8FE] font-['Playfair_Display'] text-lg font-semibold">
         Loading cases...
       </div>
     );
   }
 
+  const statusStyles = {
+    ACTIVE: "border-l-4 border-green-500",
+    CLOSED: "border-l-4 border-gray-400",
+  };
+
+  const statusBadge = {
+    ACTIVE: "bg-green-100 text-green-700",
+    CLOSED: "bg-gray-100 text-gray-600",
+  };
+
   return (
-    <div className="min-h-screen bg-[#f7f6f8] font-['Public_Sans'] text-[#161117]">
+    <div className="flex min-h-screen bg-[#F2F8FE] text-[#0F172A]">
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-white border-b px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h2 className="text-xl font-bold">Legal Assist</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-[#7e6487]">
-              Logged in as <strong>{lawyerName}</strong>
-            </span>
-            <button
-              onClick={() => navigate("/logout")}
-              className="px-4 py-2 bg-[#d790ee] rounded-lg font-bold"
-            >
-              Logout
-            </button>
+      {/* SIDEBAR */}
+      <LawyerSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
+
+      {/* RIGHT SIDE */}
+      <div className="flex-1 flex flex-col transition-all duration-300">
+
+        {/* HEADER WITH TOGGLE */}
+        <div className="flex items-center bg-gradient-to-r from-[#2563EB] to-[#14B8A6]">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="ml-6 mr-4 p-2 rounded-lg bg-white/20 backdrop-blur hover:bg-white/30 transition"
+          >
+            <Menu size={22} className="text-white" />
+          </button>
+
+          <div className="flex-1">
+            <AppHeader role="Lawyer" />
           </div>
         </div>
-      </header>
 
-      {/* MAIN */}
-      <main className="max-w-7xl mx-auto px-6 py-10">
-
-        {/* TITLE */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-black mb-2">My Cases</h1>
-          <p className="text-[#7e6487] text-lg">
-            Cases you have accepted and are currently handling
-          </p>
-        </div>
-
-        {/* EMPTY STATE */}
-        {cases.length === 0 && (
-          <div className="bg-white rounded-xl border border-dashed p-16 text-center">
-            <div className="text-4xl mb-4">📂</div>
-            <h3 className="text-xl font-bold mb-1">
-              You have no active cases yet.
-            </h3>
-            <p className="text-[#7e6487]">
-              Accepted cases will appear here.
-            </p>
-          </div>
+        {/* CENTER POPUP */}
+        {notification && (
+          <CenterPopup
+            type={notification.type}
+            message={notification.message}
+            onClose={() => setNotification(null)}
+          />
         )}
 
-        {/* CASE LIST */}
-        {cases.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cases.map((c) => (
-              <div
-                key={c.case_id}
-                className="bg-white rounded-xl border shadow-sm p-5 flex flex-col"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="font-mono text-sm text-[#7e6487]">
-                      Case ID
-                    </p>
-                    <p className="font-bold text-lg">
-                      #{c.case_id.slice(0, 8)}
+        {/* MAIN */}
+        <main className="px-12 md:px-20 pt-10 pb-12 flex-1 space-y-12">
+
+          {/* Title */}
+          <div>
+            <h1
+              className="text-4xl font-bold"
+              style={{ fontFamily: '"Playfair Display", serif' }}
+            >
+              My Cases
+            </h1>
+            <p className="text-gray-600 text-lg mt-2">
+              Cases you have accepted and are currently handling
+            </p>
+          </div>
+
+          {/* Empty State */}
+          {cases.length === 0 && (
+            <div className="bg-white rounded-3xl shadow-sm border border-dashed p-16 text-center">
+              <div className="text-5xl mb-4">📂</div>
+              <h3 className="text-xl font-bold mb-2">
+                No active cases yet
+              </h3>
+              <p className="text-gray-500">
+                Accepted cases will appear here.
+              </p>
+            </div>
+          )}
+
+          {/* Case Grid */}
+          {cases.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+
+              {cases.map((c) => (
+                <div
+                  key={c.case_id}
+                  className={`bg-white rounded-3xl shadow-md border border-gray-100 p-8 transition hover:shadow-2xl hover:-translate-y-1 flex flex-col ${statusStyles[c.status]}`}
+                >
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-6">
+
+                    <div>
+                      <h3
+                        className="text-xl font-bold"
+                        style={{ fontFamily: '"Playfair Display", serif' }}
+                      >
+                        Case #{c.case_id.slice(0, 8)}
+                      </h3>
+
+                      <p className="text-sm text-gray-500 mt-2">
+                        Created on{" "}
+                        {new Date(c.created_at).toLocaleDateString("en-IN")}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`px-4 py-1 rounded-full text-xs font-bold ${statusBadge[c.status]}`}
+                    >
+                      {c.status}
+                    </span>
+
+                  </div>
+
+                  {/* Body */}
+                  <div className="mb-8">
+                    <p className="text-gray-700">
+                      Review client submissions, evidence and proceed with analysis.
                     </p>
                   </div>
 
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      c.status === "ACTIVE"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
+                  {/* Footer */}
+                  <button
+                    onClick={() =>
+                      navigate(`/lawyer/case-review/${c.case_id}`)
+                    }
+                    className="mt-auto px-8 py-3 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#14B8A6] text-white font-semibold hover:opacity-90 transition"
                   >
-                    {c.status}
-                  </span>
+                    Open Case →
+                  </button>
+
                 </div>
+              ))}
 
-                <p className="text-sm text-[#7e6487] mb-6">
-                  Created on{" "}
-                  {new Date(c.created_at).toLocaleDateString("en-IN")}
-                </p>
+            </div>
+          )}
 
-                <button
-                  onClick={() =>
-                    navigate(`/lawyer/case-review/${c.case_id}`)
-                  }
-                  className="mt-auto w-full py-2 rounded-lg bg-[#d790ee] font-bold hover:opacity-90"
-                >
-                  Open Case →
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

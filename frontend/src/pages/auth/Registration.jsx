@@ -30,119 +30,123 @@ export default function Registration() {
 
     try {
       setLoading(true);
+      await api.post("/auth/register", { username, password, role });
 
-      await api.post("/auth/register", {
-        username,
-        password,
-        role,
-      });
-
-      setMessage("✅ Successfully registered! Redirecting to login...");
-
-      setTimeout(() => {
-        navigate("/login");
-      }, 1500);
+      setMessage("Account created successfully! Redirecting...");
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
-      console.error(err);
-      setError(
-        err?.response?.data?.detail || "❌ Registration failed"
-      );
+      setError(err?.response?.data?.detail || "Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-white"
-      style={{ fontFamily: '"Playfair Display", serif' }}
-    >
-      <form
-        onSubmit={handleRegister}
-        className="w-full max-w-[440px] space-y-6 border p-8 rounded-xl shadow-sm"
+    <div className="min-h-screen flex">
+
+      {/* LEFT PANEL */}
+      <div className="hidden md:flex w-1/2 bg-gradient-to-br from-[#2563EB] to-[#14B8A6] text-white items-center justify-center">
+        <div className="text-center max-w-lg">
+          <h1
+        className="text-9xl font-bold mb-6 text-white"
+        style={{
+          fontFamily: '"Playfair Display", serif',
+          textShadow: "0 4px 20px rgba(0,0,0,0.2)",
+         }}
       >
-        <h1 className="text-3xl font-bold text-center">
-          Create Account
-        </h1>
+            LegalAssist
+          </h1>
 
-        {/* Success Message */}
-        {message && (
-          <p className="text-green-600 text-sm font-semibold text-center">
-            {message}
+          <p className="text-lg opacity-90 leading-relaxed">
+            Intelligent Legal Case Management Platform powered by AI -
+            built to streamline case workflows, evidence tracking,
+            and professional legal reporting.
           </p>
-        )}
+        </div>
+      </div>
 
-        {/* Error Message */}
-        {error && (
-          <p className="text-red-600 text-sm font-semibold text-center">
-            {error}
+      {/* RIGHT PANEL */}
+      <div className="w-full md:w-1/2 bg-[#F8FAFC] flex items-center justify-center px-6">
+        <div className="w-full max-w-xl bg-white p-12 rounded-3xl shadow-2xl border border-gray-100">
+
+          <h2 
+            className="text-3xl font-bold text-[#0F172A] mb-2"
+            style={{ fontFamily: '"Playfair Display", serif' }}
+          >
+            Create Account
+          </h2>
+
+          <p className="text-sm text-gray-500 mb-6">
+            Join the platform and manage cases with confidence.
           </p>
-        )}
 
-        <div>
-          <label className="text-sm font-semibold">Username</label>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full h-[48px] px-4 border rounded-md"
-            placeholder="Enter username"
-          />
+          {message && (
+            <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4">
+              {message}
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-5">
+
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] transition"
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] transition"
+            />
+
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] transition"
+            />
+
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+            >
+              <option value="client">Client</option>
+              <option value="lawyer">Lawyer</option>
+            </select>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold rounded-lg transition duration-200 disabled:opacity-60"
+            >
+              {loading ? "Creating account..." : "Register"}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Already have an account?
+            <span
+              onClick={() => navigate("/login")}
+              className="ml-1 text-[#2563EB] font-semibold cursor-pointer hover:underline"
+            >
+              Login
+            </span>
+          </p>
         </div>
-
-        <div>
-          <label className="text-sm font-semibold">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full h-[48px] px-4 border rounded-md"
-            placeholder="••••••••"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-semibold">
-            Confirm Password
-          </label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full h-[48px] px-4 border rounded-md"
-            placeholder="••••••••"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-semibold">Role</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="w-full h-[48px] px-4 border rounded-md"
-          >
-            <option value="client">Client</option>
-            <option value="lawyer">Lawyer</option>
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full h-[50px] bg-[#D78FEE] font-bold rounded-md disabled:opacity-60"
-        >
-          {loading ? "Creating account..." : "Register"}
-        </button>
-
-        <p className="text-center text-sm text-gray-500">
-          Already have an account?
-          <span
-            onClick={() => navigate("/login")}
-            className="ml-1 font-semibold cursor-pointer"
-          >
-            Login
-          </span>
-        </p>
-      </form>
+      </div>
     </div>
   );
 }

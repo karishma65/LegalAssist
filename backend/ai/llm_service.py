@@ -230,6 +230,10 @@ Missing or weak evidence:
 Generate factual follow-up questions
 similar to those a lawyer may ask a client.
 
+IMPORTANT:
+Generate a MAXIMUM of 10 questions.
+If fewer questions are necessary, return fewer.
+
 Rules:
 - NO advice
 - NO judgement

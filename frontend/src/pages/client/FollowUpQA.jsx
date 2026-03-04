@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ClientProgressBar from "../../components/ClientProgressBar";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
 import api from "../../api/axiosInstance";
 
 export default function FollowUpQA() {
@@ -11,18 +13,29 @@ export default function FollowUpQA() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [notification, setNotification] = useState(null);
 
-  // =========================
+  // Auto-hide popup
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   // Fetch follow-up questions
-  // =========================
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
         const res = await api.get(`/followup/questions/${caseId}`);
         setQuestions(res.data.followup_questions || []);
       } catch (err) {
-        console.error(err);
-        alert("Failed to load follow-up questions");
+        setNotification({
+          type: "error",
+          message: "Failed to load follow-up questions.",
+        });
       } finally {
         setLoading(false);
       }
@@ -38,9 +51,6 @@ export default function FollowUpQA() {
     }));
   };
 
-  // =========================
-  // Submit answers (FIXED FLOW)
-  // =========================
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
@@ -53,68 +63,110 @@ export default function FollowUpQA() {
         })),
       };
 
-      // 1️⃣ Submit answers
       await api.post(`/followup/answers/${caseId}`, payload);
 
-      // 2️⃣ Show confirmation
-      alert("Your responses have been submitted. The lawyer will now review your case.");
+      setNotification({
+        type: "success",
+        message:
+          "Your responses have been submitted. The lawyer will now review your case.",
+      });
 
-      // 3️⃣ Redirect to My Cases (NOT risk)
-      navigate("/client/cases");
+      setTimeout(() => {
+        navigate("/client/cases");
+      }, 1500);
 
     } catch (err) {
-      console.error(err);
-      alert("Failed to submit answers");
+      setNotification({
+        type: "error",
+        message: "Failed to submit answers.",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div
-      className="min-h-screen bg-[#F9FAFB]"
-      style={{ fontFamily: '"Playfair Display", serif' }}
-    >
-      <header className="border-b bg-white px-10 py-3 shadow-sm">
-        <h2 className="text-xl font-bold">LegalAI</h2>
-      </header>
+    <div className="min-h-screen bg-[#F2F8FE] text-[#0F172A]">
 
+      {/* Header */}
+      <AppHeader role="Client" />
+
+      {/* Center Popup */}
+      {notification && (
+        <CenterPopup
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
+      {/* Progress */}
       <ClientProgressBar currentStep={4} />
 
-      <main className="flex justify-center py-10 px-4">
-        <div className="w-full max-w-[800px]">
+      {/* Main */}
+      <main className="flex justify-center px-6 py-14">
+        <div className="w-full max-w-4xl space-y-12">
 
-          <h1 className="text-3xl font-bold mb-2">Follow-Up Assessment</h1>
-          <p className="text-sm text-gray-600 mb-8">
-            Answer the questions below to clarify missing or weak evidence.
-          </p>
+          {/* Heading */}
+          <div>
+            <h1
+              className="text-4xl font-bold"
+              style={{ fontFamily: '"Playfair Display", serif' }}
+            >
+              Follow-Up Assessment
+            </h1>
+            <p className="text-gray-600 mt-3 text-lg max-w-3xl">
+              Please clarify the following points to strengthen your case.
+            </p>
+          </div>
 
-          {loading && <p>Loading questions…</p>}
+          {loading && <p className="text-gray-500">Loading questions…</p>}
 
           {!loading && questions.length === 0 && (
-            <div className="bg-white p-6 rounded-xl border text-center">
-              <p>No follow-up questions required.</p>
+            <div className="bg-white rounded-3xl shadow-md border border-dashed p-12 text-center">
+              <h3 className="text-xl font-bold mb-3">
+                No follow-up questions required
+              </h3>
               <button
                 onClick={handleSubmit}
-                className="mt-4 px-6 py-2 bg-[#D78FEE] font-bold rounded-lg"
+                className="mt-4 px-8 py-3 rounded-xl bg-gradient-to-r from-[#5D90FF] to-[#14B8A6] text-white font-bold hover:opacity-90 transition"
               >
-                Continue
+                Continue →
               </button>
             </div>
           )}
 
           {!loading && questions.length > 0 && (
-            <div className="bg-white rounded-xl border p-8 space-y-6">
+            <div className="space-y-8">
+
               {questions.map((q, i) => (
-                <div key={i}>
-                  <label className="font-semibold block mb-1">
-                    {i + 1}. {q.question}
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Claim: {q.claim}
-                  </p>
+                <div
+                  key={i}
+                  className="bg-white rounded-3xl shadow-md border border-gray-100 p-8 hover:shadow-lg transition"
+                >
+                  {/* Question Header */}
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r from-[#5D90FF] to-[#14B8A6] text-white font-bold">
+                      {i + 1}
+                    </div>
+
+                    <div>
+                      <h3
+                        className="text-xl font-bold"
+                        style={{ fontFamily: '"Playfair Display", serif' }}
+                      >
+                        {q.question}
+                      </h3>
+
+                      <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#F1F5F9] text-[#5D90FF]">
+                        Claim: {q.claim}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Answer Area */}
                   <textarea
-                    className="w-full min-h-[120px] border rounded-lg p-3"
+                    className="w-full min-h-[140px] rounded-xl border border-gray-300 p-4 focus:ring-2 focus:ring-[#5D90FF] outline-none"
                     value={answers[i] || ""}
                     onChange={(e) =>
                       handleAnswerChange(i, e.target.value)
@@ -124,24 +176,27 @@ export default function FollowUpQA() {
                 </div>
               ))}
 
-              <div className="flex justify-between pt-4 border-t">
+              {/* Footer */}
+              <div className="flex justify-between pt-6 border-t border-gray-200">
                 <button
                   onClick={() => navigate(`/client/evidence/${caseId}`)}
-                  className="text-sm font-bold text-gray-600"
+                  className="px-6 py-3 rounded-xl text-gray-600 font-semibold hover:bg-gray-100 transition"
                 >
-                  Back
+                  ← Back
                 </button>
 
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="px-8 py-3 bg-[#D78FEE] font-bold rounded-lg"
+                  className="px-10 py-3 rounded-xl bg-gradient-to-r from-[#5D90FF] to-[#14B8A6] text-white font-bold hover:opacity-90 transition disabled:opacity-60"
                 >
-                  {submitting ? "Submitting..." : "Submit Answers"}
+                  {submitting ? "Submitting..." : "Submit Answers →"}
                 </button>
               </div>
+
             </div>
           )}
+
         </div>
       </main>
     </div>

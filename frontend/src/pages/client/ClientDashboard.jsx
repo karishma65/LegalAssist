@@ -1,60 +1,66 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
+import ClientSidebar from "../../components/ClientSidebar";
+import { Menu } from "lucide-react";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
+  const [notification, setNotification] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-['Playfair_Display'] text-[#1e0b24]">
+    <div className="flex min-h-screen bg-[#F2F8FE] text-[#0F172A]">
       
-      {/* Header */}
-      <header className="bg-[#d37be9] sticky top-0 z-50 px-6 py-4 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between text-black">
-          
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold tracking-tight font-['Playfair_Display']">
-              Legal Assist
-            </h2>
-          </div>
+      {/* SIDEBAR */}
+      <ClientSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
 
-          {/* Right */}
-          <div className="flex items-center gap-6">
-            <span className="text-lg hidden md:block">
-              Logged in as: <strong>Client</strong>
-            </span>
+      {/* RIGHT SIDE */}
+      <div className="flex-1 flex flex-col transition-all duration-300">
 
-            {/* Logout */}
-            <button
-              onClick={() => {
-                localStorage.clear();
-                navigate("/login");
-              }}
-              className="bg-[#d9c5df] hover:bg-[#98839e] text-black px-6 py-2 rounded-full text-base font-bold transition"
-            >
-              Logout
-            </button>
+        {/* HEADER */}
+        <div className="flex items-center bg-gradient-to-r from-[#2563EB] to-[#14B8A6]">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="ml-6 mr-4 p-2 rounded-lg bg-white/20 backdrop-blur hover:bg-white/30 transition"
+          >
+            <Menu size={22} className="text-white" />
+          </button>
+
+          <div className="flex-1">
+            <AppHeader role="Client" />
           </div>
         </div>
-      </header>
 
-      {/* Main */}
-      <main className="flex-grow flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-7xl flex flex-col gap-10">
+        {/* CENTER POPUP */}
+        <CenterPopup
+          notification={notification}
+          setNotification={setNotification}
+        />
 
-          {/* Title */}
-          <div>
-            <h1 className="text-5xl font-bold font-['Playfair_Display']">
-              Client Dashboard
-            </h1>
-            <p className="text-xl italic text-[#6b5b73]">
-              Welcome back. Select an action to proceed.
-            </p>
-          </div>
+        {/* HERO SECTION */}
+        <section className="px-12 md:px-20 pt-10 pb-6">
+          <h1
+            className="text-4xl font-bold mb-3"
+            style={{ fontFamily: '"Playfair Display", serif' }}
+          >
+            Client Dashboard
+          </h1>
 
-          {/* Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Request Lawyer */}
+          <p className="text-gray-600 text-lg max-w-3xl leading-relaxed">
+            Manage your consultations, case requests, and active cases.
+            Navigate through your legal workflow with clarity and confidence.
+          </p>
+        </section>
+
+        {/* ACTION CARDS */}
+        <section className="px-12 md:px-20 pb-12 flex-1 flex items-start">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full">
+
             <DashboardCard
               title="Request a Lawyer"
               desc="Send a consultation request to a lawyer of your choice."
@@ -63,51 +69,53 @@ export default function ClientDashboard() {
               onClick={() => navigate("/client/select-lawyer")}
             />
 
-            {/* My Requests */}
             <DashboardCard
               title="My Requests"
-              desc="View the status of lawyer consultation requests."
+              desc="Track the status of consultation requests sent to lawyers."
               buttonText="My Requests"
               onClick={() => navigate("/client/requests")}
             />
 
-            {/* My Cases */}
             <DashboardCard
               title="My Cases"
-              desc="View and manage cases accepted by lawyers."
+              desc="Access and manage cases that have been accepted by lawyers."
               buttonText="My Cases"
               onClick={() => navigate("/client/cases")}
             />
 
           </div>
-        </div>
-      </main>
+        </section>
+
+      </div>
     </div>
   );
 }
 
-/* ---------------- CARD COMPONENT ---------------- */
+/* ================= CARD COMPONENT ================= */
 
 function DashboardCard({ title, desc, buttonText, primary, onClick }) {
   return (
-    <div
-      onClick={onClick}
-      className="bg-[#e2b4f6] rounded-[2rem] p-8 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[380px] hover:-translate-y-1 cursor-pointer font-['Playfair_Display']"
-    >
+    <div className="bg-white rounded-3xl p-10 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100 flex flex-col justify-between min-h-[340px]">
+
       <div>
-        <h3 className="text-3xl font-bold mb-3">
+        <h3
+          className="text-2xl font-bold mb-4"
+          style={{ fontFamily: '"Playfair Display", serif' }}
+        >
           {title}
         </h3>
-        <p className="text-lg text-[#2f1e35] leading-relaxed">
+
+        <p className="text-gray-600 leading-relaxed text-base">
           {desc}
         </p>
       </div>
 
       <button
-        className={`w-full mt-8 py-4 px-6 rounded-xl text-lg font-bold flex items-center justify-center gap-2 transition ${
+        onClick={onClick}
+        className={`mt-10 w-full py-3 rounded-xl font-semibold transition ${
           primary
-            ? "bg-[#f3f0f3] text-black hover:bg-[#f9f6f6]"
-            : "bg-white text-[#1e0b24] hover:bg-[#f3f3f3]"
+            ? "bg-gradient-to-r from-[#2563EB] to-[#14B8A6] text-white hover:opacity-90"
+            : "border-2 border-[#14B8A6] text-[#14B8A6] hover:bg-[#14B8A6] hover:text-white"
         }`}
       >
         {buttonText}

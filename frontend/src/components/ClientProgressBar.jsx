@@ -7,47 +7,57 @@ export default function ClientProgressBar({ currentStep }) {
   ];
 
   return (
-    <div className="w-full bg-white border border-[#E5E7EB] rounded-2xl px-8 py-6 shadow-sm mb-8">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-sm font-bold tracking-wide text-[#161117] uppercase">
+    <div className="w-full backdrop-blur-lg bg-white/80 rounded-3xl px-10 py-8 shadow-lg border border-white/40 mb-10">
+
+      <div className="flex justify-between items-center mb-8">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-gray-600">
           Case Progress
         </h3>
-        <span className="text-sm font-semibold text-[#D78FEE]">
-          Step {currentStep} of 4
+        <span className="text-sm font-semibold text-[#5D90FF]">
+          Step {currentStep} of {steps.length}
         </span>
       </div>
 
       <div className="relative">
-        {/* Base line */}
-        <div className="absolute top-5 left-0 w-full h-[4px] bg-[#F1F1F1] rounded-full" />
 
-        {/* Active line */}
+        <div className="absolute top-6 left-0 w-full h-[6px] bg-gray-200 rounded-full" />
+
         <div
-          className="absolute top-5 left-0 h-[4px] bg-[#D78FEE] rounded-full transition-all"
-          style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
+          className="absolute top-6 left-0 h-[6px] bg-gradient-to-r from-[#5D90FF] to-[#14B8A6] rounded-full transition-all duration-500"
+          style={{
+            width: `${((currentStep - 1) / (steps.length - 1)) * 100}%`,
+          }}
         />
 
         <div className="flex justify-between relative z-10">
           {steps.map((step) => (
             <div key={step.id} className="flex flex-col items-center w-1/4">
               <div
-                className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition-all
+                className={`w-14 h-14 flex items-center justify-center rounded-full text-sm font-bold transition-all duration-300
                   ${
                     step.id < currentStep
-                      ? "bg-[#161117] text-white"
+                      ? "bg-gradient-to-r from-[#5D90FF] to-[#14B8A6] text-white"
                       : step.id === currentStep
-                      ? "bg-[#D78FEE] text-[#161117] ring-4 ring-[#F6E9FB]"
-                      : "bg-white border border-[#E5E7EB] text-[#9CA3AF]"
+                      ? "bg-white border-2 border-[#5D90FF] text-[#5D90FF] shadow-lg"
+                      : "bg-white border border-gray-300 text-gray-400"
                   }`}
               >
-                {step.id}
+                {step.id < currentStep ? "✓" : step.id}
               </div>
-              <span className="mt-3 text-sm font-semibold text-[#161117]">
+
+              <span
+                className={`mt-4 text-sm font-semibold ${
+                  step.id <= currentStep
+                    ? "text-[#0F172A]"
+                    : "text-gray-400"
+                }`}
+              >
                 {step.label}
               </span>
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );

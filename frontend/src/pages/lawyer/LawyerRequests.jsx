@@ -1,11 +1,27 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
 import api from "../../api/axiosInstance";
+import LawyerSidebar from "../../components/LawyerSidebar";
+import { Menu } from "lucide-react";
 
 export default function LawyerRequests() {
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Auto-hide popup
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     fetchRequests();
@@ -14,10 +30,12 @@ export default function LawyerRequests() {
   const fetchRequests = async () => {
     try {
       const res = await api.get("/case-request/incoming");
-      setRequests(res.data);
+      setRequests(res.data || []);
     } catch (err) {
-      console.error(err);
-      alert("Failed to load consultation requests");
+      setNotification({
+        type: "error",
+        message: "Failed to load consultation requests.",
+      });
     } finally {
       setLoading(false);
     }
@@ -26,129 +44,200 @@ export default function LawyerRequests() {
   const handleAccept = async (requestId) => {
     try {
       await api.post(`/case-request/accept/${requestId}`);
-      fetchRequests(); // refresh list
+      setNotification({
+        type: "success",
+        message: "Request accepted. Case created successfully.",
+      });
+      fetchRequests();
     } catch {
-      alert("Failed to accept request");
+      setNotification({
+        type: "error",
+        message: "Failed to accept request.",
+      });
     }
   };
 
   const handleReject = async (requestId) => {
     try {
       await api.post(`/case-request/reject/${requestId}`);
-      fetchRequests(); // refresh list
+      setNotification({
+        type: "success",
+        message: "Request rejected successfully.",
+      });
+      fetchRequests();
     } catch {
-      alert("Failed to reject request");
+      setNotification({
+        type: "error",
+        message: "Failed to reject request.",
+      });
     }
   };
 
-  const urgencyStyles = {
-    high: "bg-red-50 text-red-700 border-red-100",
-    medium: "bg-orange-50 text-orange-700 border-orange-100",
-    low: "bg-blue-50 text-blue-700 border-blue-100",
+  const urgencyColors = {
+    high: "border-l-4 border-red-500",
+    medium: "border-l-4 border-orange-500",
+    low: "border-l-4 border-blue-500",
+  };
+
+  const urgencyBadge = {
+    high: "bg-red-100 text-red-700",
+    medium: "bg-orange-100 text-orange-700",
+    low: "bg-blue-100 text-blue-700",
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f6f8] px-6 py-10 font-['Playfair_Display'] text-[#161118]">
-      <div className="max-w-3xl mx-auto flex flex-col gap-6">
+    <div className="flex min-h-screen bg-[#F2F8FE] text-[#0F172A]">
 
-        {/* Header */}
-        <div className="flex justify-between items-end">
-          <div>
-            <h1 className="text-3xl font-bold">
-              Incoming Consultation Requests
-            </h1>
-            <p className="text-sm text-[#816388]">
-              Review client case requests before proceeding
-            </p>
-          </div>
+      {/* SIDEBAR */}
+      <LawyerSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
 
+      {/* RIGHT SIDE */}
+      <div className="flex-1 flex flex-col transition-all duration-300">
+
+        {/* HEADER WITH TOGGLE */}
+        <div className="flex items-center bg-gradient-to-r from-[#2563EB] to-[#14B8A6]">
           <button
-            onClick={() => navigate("/lawyer/dashboard")}
-            className="h-10 px-4 rounded-lg border bg-white hover:bg-[#f3f0f4] text-sm font-medium"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="ml-6 mr-4 p-2 rounded-lg bg-white/20 backdrop-blur hover:bg-white/30 transition"
           >
-            ← Back to Dashboard
+            <Menu size={22} className="text-white" />
           </button>
+
+          <div className="flex-1">
+            <AppHeader role="Lawyer" />
+          </div>
         </div>
 
-        {/* Loading */}
-        {loading && (
-          <p className="text-center text-sm text-gray-500">
-            Loading requests...
-          </p>
+        {/* CENTER POPUP */}
+        {notification && (
+          <CenterPopup
+            type={notification.type}
+            message={notification.message}
+            onClose={() => setNotification(null)}
+          />
         )}
 
-        {/* Empty State */}
-        {!loading && requests.length === 0 && (
-          <div className="bg-white rounded-xl border border-dashed p-12 text-center">
-            <h3 className="text-lg font-bold mb-1">
-              No consultation requests at the moment
-            </h3>
-            <p className="text-sm text-[#816388]">
-              You’re all caught up.
-            </p>
-          </div>
-        )}
+        {/* MAIN */}
+        <main className="px-12 md:px-20 pt-10 pb-12 flex-1 space-y-10">
 
-        {/* Requests from DB */}
-        {!loading &&
-          requests.map((req) => (
-            <div
-              key={req.request_id}
-              className="bg-white rounded-xl p-6 border shadow-sm flex flex-col gap-4"
-            >
-              {/* Top Row */}
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center gap-3">
-                  <span className="h-8 w-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">
-                    ID
-                  </span>
-                  <span className="font-mono font-bold text-sm">
-                    #{req.request_id.slice(0, 6)}
-                  </span>
-                </div>
-
-                <span className="text-xs text-[#816388]">
-                  {new Date(req.created_at).toLocaleString("en-IN")}
-                </span>
-              </div>
-
-              {/* Body */}
-              <div>
-                <span
-                  className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mb-2 ${
-                    urgencyStyles[req.urgency]
-                  }`}
-                >
-                  {req.urgency.toUpperCase()} URGENCY
-                </span>
-
-                <p className="text-sm font-semibold mb-1">
-                  Client: {req.client_name}
-                </p>
-
-                <p className="text-sm text-[#5d5461] leading-relaxed line-clamp-2">
-                  {req.short_summary}
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  onClick={() => handleReject(req.request_id)}
-                  className="h-9 px-4 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50"
-                >
-                  Reject
-                </button>
-
-                <button
-                  onClick={() => handleAccept(req.request_id)}
-                  className="h-9 px-4 rounded-lg bg-[#c330e8] text-white text-sm font-semibold hover:opacity-90"
-                >
-                  Accept & Create Case
-                </button>
-              </div>
+          {/* Page Title */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1
+                className="text-4xl font-bold"
+                style={{ fontFamily: '"Playfair Display", serif' }}
+              >
+                Incoming Requests
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Review client consultation submissions
+              </p>
             </div>
-          ))}
+
+            <button
+              onClick={() => navigate("/lawyer/dashboard")}
+              className="px-6 py-3 rounded-xl border border-gray-300 font-semibold hover:bg-gray-100 transition"
+            >
+              ← Dashboard
+            </button>
+          </div>
+
+          {/* Loading */}
+          {loading && (
+            <p className="text-center text-gray-500">
+              Loading requests...
+            </p>
+          )}
+
+          {/* Empty State */}
+          {!loading && requests.length === 0 && (
+            <div className="bg-white rounded-3xl shadow-sm border border-dashed p-16 text-center">
+              <h3 className="text-xl font-bold mb-3">
+                No consultation requests
+              </h3>
+              <p className="text-gray-500">
+                You're all caught up for now.
+              </p>
+            </div>
+          )}
+
+          {/* Requests */}
+          {!loading && requests.length > 0 && (
+            <div className="space-y-8">
+
+              {requests.map((req) => (
+                <div
+                  key={req.request_id}
+                  className={`bg-white rounded-3xl shadow-md border border-gray-100 p-8 transition hover:shadow-xl ${urgencyColors[req.urgency]}`}
+                >
+                  {/* Header Row */}
+                  <div className="flex justify-between items-start mb-6">
+
+                    <div>
+                      <h3
+                        className="text-xl font-bold"
+                        style={{ fontFamily: '"Playfair Display", serif' }}
+                      >
+                        Client: {req.client_name}
+                      </h3>
+
+                      <p className="text-sm text-gray-500 mt-1">
+                        Request ID #{req.request_id.slice(0, 8)}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`px-4 py-1 rounded-full text-xs font-bold ${urgencyBadge[req.urgency]}`}
+                    >
+                      {req.urgency.toUpperCase()}
+                    </span>
+
+                  </div>
+
+                  {/* Summary */}
+                  <div className="mb-6">
+                    <p className="text-gray-700 leading-relaxed">
+                      {req.short_summary}
+                    </p>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex justify-between items-center border-t pt-6">
+
+                    <span className="text-xs text-gray-400">
+                      Submitted on{" "}
+                      {new Date(req.created_at).toLocaleDateString("en-IN")}
+                    </span>
+
+                    <div className="flex gap-4">
+
+                      <button
+                        onClick={() => handleReject(req.request_id)}
+                        className="px-6 py-2 rounded-xl border border-red-300 text-red-600 font-semibold hover:bg-red-50 transition"
+                      >
+                        Reject
+                      </button>
+
+                      <button
+                        onClick={() => handleAccept(req.request_id)}
+                        className="px-6 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#14B8A6] text-white font-semibold hover:opacity-90 transition"
+                      >
+                        Accept & Create Case
+                      </button>
+
+                    </div>
+                  </div>
+
+                </div>
+              ))}
+
+            </div>
+          )}
+
+        </main>
       </div>
     </div>
   );

@@ -1,17 +1,24 @@
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    ListFlowable,
+    ListItem
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import A4
+from urllib.parse import quote
 from datetime import datetime
 import json
 import os
+import re
 
 
-# -----------------------------
+# ======================================================
 # SAFE JSON LOADER
-# -----------------------------
+# ======================================================
 def safe_json_load(value, default):
     if not value:
         return default
@@ -23,9 +30,29 @@ def safe_json_load(value, default):
         return default
 
 
-# -----------------------------
+# ======================================================
+# CLEAN TEXT FORMATTING
+# FIX: Remove ₹ symbol issue
+# ======================================================
+def clean_text(text):
+    if not text:
+        return ""
+
+    text = str(text)
+
+    # FIX FOR ₹ SYMBOL (prevents ■ squares)
+    text = text.replace("₹", "Rs. ")
+
+    text = re.sub(r'\.([A-Z])', r'. \1', text)
+    text = re.sub(r'\?([A-Z])', r'? \1', text)
+    text = re.sub(r'\!([A-Z])', r'! \1', text)
+
+    return text
+
+
+# ======================================================
 # ROMAN NUMERAL GENERATOR
-# -----------------------------
+# ======================================================
 def to_roman(n):
     romans = [
         (1000, 'm'), (900, 'cm'), (500, 'd'), (400, 'cd'),
@@ -40,222 +67,298 @@ def to_roman(n):
     return result
 
 
-# -----------------------------
-# PAGE DECORATION
-# -----------------------------
+# ======================================================
+# PAGE LAYOUT
+# ======================================================
 def add_page_layout(canvas, doc):
     canvas.saveState()
 
-    canvas.setStrokeColor(colors.grey)
-    canvas.rect(20, 20, A4[0] - 40, A4[1] - 40, stroke=1, fill=0)
+    canvas.setStrokeColor(colors.black)
+    canvas.setLineWidth(1)
+
+    canvas.rect(30, 30, A4[0] - 60, A4[1] - 60)
 
     canvas.setFont("Helvetica", 9)
+
     canvas.drawRightString(
         A4[0] - 40,
-        A4[1] - 30,
-        f"Generated on: {datetime.now().strftime('%d %b %Y')}"
+        A4[1] - 40,
+        f"Generated on: {datetime.now().strftime('%d %B %Y')}"
     )
 
     canvas.drawCentredString(
         A4[0] / 2,
-        25,
+        35,
         f"Page {doc.page}"
     )
 
     canvas.restoreState()
 
 
-# -----------------------------
+# ======================================================
 # MAIN PDF GENERATOR
-# -----------------------------
+# ======================================================
 def generate_case_pdf(case):
 
-    file_path = f"generated_pdfs/case_{case.case_id}.pdf"
     os.makedirs("generated_pdfs", exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = f"generated_pdfs/case_{case.case_id}_{timestamp}.pdf"
 
     doc = SimpleDocTemplate(
         file_path,
         pagesize=A4,
-        rightMargin=40,
-        leftMargin=40,
-        topMargin=60,
-        bottomMargin=50
+        rightMargin=50,
+        leftMargin=50,
+        topMargin=70,
+        bottomMargin=60
     )
 
     styles = getSampleStyleSheet()
 
     styles.add(ParagraphStyle(
+        name="OfficialTitle",
+        fontSize=18,
+        alignment=1,
+        spaceAfter=18,
+        fontName="Helvetica-Bold"
+    ))
+
+    styles.add(ParagraphStyle(
         name="SectionHeader",
         fontSize=14,
-        textColor=colors.darkblue,
-        spaceBefore=14,
-        spaceAfter=10,
+        spaceBefore=18,
+        spaceAfter=12,
         fontName="Helvetica-Bold"
     ))
 
     styles.add(ParagraphStyle(
         name="SubHeader",
-        fontSize=11,
-        textColor=colors.darkred,
-        spaceBefore=8,
-        spaceAfter=6,
+        fontSize=12,
+        spaceBefore=12,
+        spaceAfter=8,
         fontName="Helvetica-Bold"
-    ))
-
-    styles.add(ParagraphStyle(
-        name="Question",
-        fontSize=10,
-        textColor=colors.darkgreen,
-        spaceAfter=4,
-        fontName="Helvetica-Bold"
-    ))
-
-    styles.add(ParagraphStyle(
-        name="Answer",
-        fontSize=10,
-        leftIndent=18,
-        spaceAfter=8
     ))
 
     styles.add(ParagraphStyle(
         name="NormalText",
-        fontSize=10,
-        spaceAfter=6
+        fontSize=11,
+        leading=16,
+        spaceAfter=8,
+        alignment=4
+    ))
+
+    styles.add(ParagraphStyle(
+        name="Question",
+        fontSize=11,
+        fontName="Helvetica-Bold",
+        spaceBefore=6,
+        spaceAfter=3
+    ))
+
+    styles.add(ParagraphStyle(
+        name="Answer",
+        fontSize=11,
+        leftIndent=20,
+        spaceAfter=10,
+        leading=15,
+        alignment=4
     ))
 
     content = []
 
-    # ======================================================
-    # TITLE
-    # ======================================================
     content.append(Paragraph(
-        "AI-Assisted Lawyer-Ready Case Report",
-        styles["Title"]
+        "OFFICIAL LEGAL CASE ANALYSIS REPORT",
+        styles["OfficialTitle"]
     ))
-    content.append(Spacer(1, 12))
+
+    content.append(Spacer(1, 0.25 * inch))
 
     # ======================================================
-    # 1. CASE INTAKE SUMMARY
+    # CASE INTAKE SUMMARY
     # ======================================================
-    content.append(Paragraph("1. Case Intake Summary", styles["SectionHeader"]))
+    content.append(Paragraph(
+        "1. CASE INTAKE SUMMARY",
+        styles["SectionHeader"]
+    ))
 
     intake = safe_json_load(case.facts, case.facts)
 
     if isinstance(intake, dict):
+
         for key, value in intake.items():
-            content.append(
-                Paragraph(key.replace("_", " ").title(), styles["SubHeader"])
-            )
-            content.append(
-                Paragraph(str(value), styles["NormalText"])
-            )
+
+            content.append(Paragraph(
+                clean_text(key.replace("_", " ").title()),
+                styles["SubHeader"]
+            ))
+
+            content.append(Paragraph(
+                clean_text(value),
+                styles["NormalText"]
+            ))
+
     else:
-        content.append(
-            Paragraph(str(intake), styles["NormalText"])
-        )
+
+        content.append(Paragraph(
+            clean_text(intake),
+            styles["NormalText"]
+        ))
 
     # ======================================================
-    # 2. EXTRACTED LEGAL CLAIMS
+    # EXTRACTED CLAIMS
     # ======================================================
-    content.append(Paragraph("2. Extracted Legal Claims", styles["SectionHeader"]))
+    content.append(Paragraph(
+        "2. EXTRACTED LEGAL CLAIMS",
+        styles["SectionHeader"]
+    ))
 
     claims = safe_json_load(case.claims, [])
 
     if not claims:
-        content.append(Paragraph("No legal claims identified.", styles["NormalText"]))
+        content.append(Paragraph(
+            "No legal claims identified.",
+            styles["NormalText"]
+        ))
+
     else:
+
         for idx, c in enumerate(claims):
-            content.append(
-                Paragraph(f"{chr(97 + idx)}) {c.get('claim', '')}", styles["SubHeader"])
-            )
 
-            sub = []
+            content.append(Paragraph(
+                f"{chr(97 + idx)}) {clean_text(c.get('claim', ''))}",
+                styles["SubHeader"]
+            ))
+
+            bullets = []
+
             for jdx, ev in enumerate(c.get("required_evidence", [])):
-                sub.append(
-                    ListItem(
-                        Paragraph(
-                            f"({to_roman(jdx + 1)}) {ev}",
-                            styles["NormalText"]
-                        )
+
+                bullets.append(ListItem(
+                    Paragraph(
+                        f"({to_roman(jdx+1)}) {clean_text(ev)}",
+                        styles["NormalText"]
                     )
-                )
-            content.append(ListFlowable(sub))
+                ))
+
+            # FIX: Remove automatic numbering
+            content.append(ListFlowable(
+                bullets,
+                leftIndent=20,
+                bulletType="bullet",
+                bulletText=""
+            ))
 
     # ======================================================
-    # 3. EVIDENCE STATUS
+    # EVIDENCE STATUS
     # ======================================================
-    content.append(Paragraph("3. Evidence Status", styles["SectionHeader"]))
+    content.append(Paragraph(
+        "3. EVIDENCE STATUS",
+        styles["SectionHeader"]
+    ))
 
     evidence = safe_json_load(case.evidence, {})
 
     if not evidence:
-        content.append(Paragraph("No evidence uploaded.", styles["NormalText"]))
+
+        content.append(Paragraph(
+            "No evidence uploaded.",
+            styles["NormalText"]
+        ))
+
     else:
-        for idx, (claim, e) in enumerate(evidence.items()):
-            content.append(
-                Paragraph(f"{chr(97 + idx)}) Claim: {claim}", styles["SubHeader"])
-            )
-            content.append(
-                Paragraph(
-                    f"Status: {e.get('status', 'Unknown')}",
+
+        for idx, (claim, evidence_list) in enumerate(evidence.items()):
+
+            content.append(Paragraph(
+                f"{chr(97 + idx)}) Claim: {clean_text(claim)}",
+                styles["SubHeader"]
+            ))
+
+            if isinstance(evidence_list, list) and evidence_list:
+
+                for file_idx, file_obj in enumerate(evidence_list):
+
+                    if isinstance(file_obj, dict):
+                        filename = file_obj.get("filename")
+                        status = file_obj.get("status", "Unknown")
+                    else:
+                        filename = file_obj
+                        status = "Unknown"
+
+                    if not filename:
+                        continue
+
+                    safe_claim = claim.replace(" ", "_")
+
+                    case_id_encoded = quote(str(case.case_id))
+                    claim_encoded = quote(str(safe_claim))
+                    filename_encoded = quote(str(filename))
+
+                    file_url = (
+                        f"http://127.0.0.1:8000/uploads/"
+                        f"{case_id_encoded}/"
+                        f"{claim_encoded}/"
+                        f"{filename_encoded}"
+                    )
+
+                    content.append(Paragraph(
+                        f"({to_roman(file_idx+1)}) {filename} — Status: {status}",
+                        styles["NormalText"]
+                    ))
+
+                    content.append(Paragraph(
+                        f'<font color="blue"><u>'
+                        f'<a href="{file_url}">Download Evidence</a>'
+                        f'</u></font>',
+                        styles["NormalText"]
+                    ))
+
+                    content.append(Spacer(1, 8))
+
+            else:
+
+                content.append(Paragraph(
+                    "No files uploaded for this claim.",
                     styles["NormalText"]
-                )
-            )
+                ))
 
     # ======================================================
-    # 4. FOLLOW-UP QUESTIONS & ANSWERS
+    # FOLLOW-UP QUESTIONS
     # ======================================================
-    content.append(
-        Paragraph("4. Follow-up Questions & Answers", styles["SectionHeader"])
-    )
+    content.append(Paragraph(
+        "4. FOLLOW-UP QUESTIONS & RESPONSES",
+        styles["SectionHeader"]
+    ))
 
     answers = safe_json_load(case.mock_answers, [])
 
     if not answers:
-        content.append(
-            Paragraph("No follow-up responses submitted.", styles["NormalText"])
-        )
+
+        content.append(Paragraph(
+            "No follow-up responses submitted.",
+            styles["NormalText"]
+        ))
+
     else:
+
         for a in answers:
-            content.append(
-                Paragraph(f"Q: {a.get('question','')}", styles["Question"])
-            )
-            content.append(
-                Paragraph(f"A: {a.get('answer','')}", styles["Answer"])
-            )
 
-    # ======================================================
-    # 5. RISK & LOOPHOLE ANALYSIS
-    # ======================================================
-    content.append(
-        Paragraph("5. Risk & Loophole Analysis", styles["SectionHeader"])
-    )
+            question = clean_text(a.get('question', ''))
+            answer = clean_text(a.get('answer', ''))
 
-    risk = safe_json_load(case.risk_report, {})
+            if not answer:
+                answer = "Not provided."
 
-    def render_risk(title, items):
-        content.append(Paragraph(title, styles["SubHeader"]))
-        if not items:
-            content.append(
-                Paragraph("No issues identified in this category.", styles["NormalText"])
-            )
-        else:
-            bullets = []
-            for idx, item in enumerate(items):
-                bullets.append(
-                    ListItem(
-                        Paragraph(
-                            f"{chr(97 + idx)}) {item}",
-                            styles["NormalText"]
-                        )
-                    )
-                )
-            content.append(ListFlowable(bullets))
+            content.append(Paragraph(
+                f"Q: {question}",
+                styles["Question"]
+            ))
 
-    render_risk("Missing Information", risk.get("missing_information", []))
-    render_risk("Weak Claims", risk.get("weak_claims", []))
-    render_risk("Unanswered Questions", risk.get("unanswered_questions", []))
-    render_risk("Risk Flags", risk.get("risk_flags", []))
+            content.append(Paragraph(
+                f"A: {answer}",
+                styles["Answer"]
+            ))
 
     # ======================================================
     # BUILD PDF

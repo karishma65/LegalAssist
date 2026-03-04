@@ -1,41 +1,56 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axiosInstance";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
+import ClientSidebar from "../../components/ClientSidebar";
+import { Menu } from "lucide-react";
 
 export default function ClientRequests() {
   const navigate = useNavigate();
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // 🔹 Fetch logged-in client's requests
-useEffect(() => {
-  const fetchRequests = async () => {
-    try {
-      const res = await api.get("/case-request/my");
-      setRequests(res.data || []);
-    } catch (err) {
-      console.error("Fetch error:", err);
-
-      if (err.response?.status === 401) {
-        alert("Session expired. Please login again.");
-        navigate("/login");
-      } else {
-        alert(
-          err.response?.data?.detail ||
-          "Failed to load consultation requests"
-        );
-      }
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 2500);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [notification]);
 
-  fetchRequests();
-}, [navigate]);
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const res = await api.get("/case-request/my");
+        setRequests(res.data || []);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          setNotification({
+            type: "error",
+            message: "Session expired. Please login again.",
+          });
+          setTimeout(() => navigate("/login"), 1200);
+        } else {
+          setNotification({
+            type: "error",
+            message:
+              err.response?.data?.detail ||
+              "Failed to load consultation requests",
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchRequests();
+  }, [navigate]);
 
-  // 🔹 Styles
   const urgencyStyles = {
     low: "bg-blue-100 text-blue-700",
     medium: "bg-orange-100 text-orange-700",
@@ -58,131 +73,151 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbf8fc] px-6 md:px-20 py-10 font-['Playfair_Display'] text-[#180d1b]">
+    <div className="flex min-h-screen bg-[#F2F8FE] text-[#0F172A]">
 
-      {/* Header */}
-      <div className="flex justify-between items-start mb-10">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">
-            My Consultation Requests
-          </h1>
-          <p className="text-lg italic text-[#5c5461]">
-            Track the status of your legal inquiries
-          </p>
+      {/* SIDEBAR */}
+      <ClientSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
+
+      {/* RIGHT SIDE */}
+      <div className="flex-1 flex flex-col transition-all duration-300">
+
+        {/* HEADER */}
+        <div className="flex items-center bg-gradient-to-r from-[#2563EB] to-[#14B8A6]">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="ml-6 mr-4 p-2 rounded-lg bg-white/20 backdrop-blur hover:bg-white/30 transition"
+          >
+            <Menu size={22} className="text-white" />
+          </button>
+
+          <div className="flex-1">
+            <AppHeader role="Client" />
+          </div>
         </div>
 
-        <button
-          onClick={() => navigate("/client/select-lawyer")}
-          className="h-12 px-6 rounded-xl bg-[#a411d4] text-white font-bold hover:opacity-90 transition"
-        >
-          + New Request
-        </button>
+        {/* CENTER POPUP */}
+        {notification && (
+          <CenterPopup
+            type={notification.type}
+            message={notification.message}
+            onClose={() => setNotification(null)}
+          />
+        )}
+
+        {/* ================= MAIN ================= */}
+        <main className="px-12 md:px-20 pt-10 pb-12 flex-1">
+
+          {/* Title Section */}
+          <div className="flex justify-between items-start mb-10">
+            <div>
+              <h1
+                className="text-4xl font-bold mb-3"
+                style={{ fontFamily: '"Playfair Display", serif' }}
+              >
+                My Consultation Requests
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Track the status of your legal inquiries.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate("/client/select-lawyer")}
+              className="h-12 px-8 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#14B8A6] text-white font-bold hover:opacity-90 transition"
+            >
+              + New Request
+            </button>
+          </div>
+
+          {/* Loading */}
+          {loading && (
+            <p className="text-center text-lg text-gray-500">
+              Loading requests...
+            </p>
+          )}
+
+          {/* Empty State */}
+          {!loading && requests.length === 0 && (
+            <div className="bg-white rounded-3xl border border-dashed p-16 text-center shadow-sm">
+              <h3 className="text-2xl font-bold mb-3">
+                No consultation requests yet
+              </h3>
+              <p className="text-gray-500">
+                Start by sending a request to a lawyer.
+              </p>
+            </div>
+          )}
+
+          {/* Table */}
+          {!loading && requests.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+
+                  {/* HEADER */}
+                  <thead className="bg-[#F8FAFC] border-b">
+                    <tr className="text-xs uppercase tracking-wider text-gray-500">
+                      <th className="px-6 py-4 text-left">Lawyer</th>
+                      <th className="px-6 py-4 text-left">Summary</th>
+                      <th className="px-6 py-4 text-center">Urgency</th>
+                      <th className="px-6 py-4 text-center">Date</th>
+                      <th className="px-6 py-4 text-center">Status</th>
+                    </tr>
+                  </thead>
+
+                  {/* BODY */}
+                  <tbody className="divide-y divide-gray-100">
+                    {requests.map((req) => (
+                      <tr
+                        key={req.request_id}
+                        className="hover:bg-[#F4F8FF] transition duration-200"
+                      >
+                        <td className="px-6 py-5 font-semibold">
+                          {req.lawyer_name || "—"}
+                        </td>
+
+                        <td className="px-6 py-5 text-sm text-gray-600 max-w-[320px]">
+                          {req.short_summary}
+                        </td>
+
+                        <td className="px-6 py-5 text-center">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              urgencyStyles[req.urgency] ||
+                              "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {req.urgency?.toUpperCase()}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-5 text-sm text-gray-600 text-center">
+                          {formatDate(req.created_at)}
+                        </td>
+
+                        <td className="px-6 py-5 text-center">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              statusStyles[req.status]
+                            }`}
+                          >
+                            {req.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+
+                </table>
+              </div>
+            </div>
+          )}
+
+        </main>
       </div>
-
-      {/* Filters (UI only) */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <select className="h-10 px-4 rounded-lg bg-white border">
-          <option>All Status</option>
-          <option>Pending</option>
-          <option>Accepted</option>
-          <option>Rejected</option>
-        </select>
-
-        <input
-          type="text"
-          placeholder="Search by lawyer or subject..."
-          className="h-10 px-4 rounded-lg bg-white border w-full md:w-80"
-        />
-      </div>
-
-      {/* Loading */}
-      {loading && (
-        <p className="text-center text-lg">Loading requests...</p>
-      )}
-
-      {/* Empty State */}
-      {!loading && requests.length === 0 && (
-        <p className="text-center text-lg text-gray-500">
-          No consultation requests found.
-        </p>
-      )}
-
-      {/* Requests Table */}
-      {!loading && requests.length > 0 && (
-        <div className="bg-white rounded-2xl shadow border overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-[#faf7fc] border-b">
-              <tr className="text-xs uppercase tracking-wider text-[#5c5461]">
-                <th className="p-4">Lawyer</th>
-                <th className="p-4">Summary</th>
-                <th className="p-4">Urgency</th>
-                <th className="p-4">Date</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Action</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y">
-              {requests.map((req) => (
-                <tr
-                  key={req.request_id}
-                  className="hover:bg-[#fcfaff] transition"
-                >
-                  <td className="p-4 font-bold">
-                    {req.lawyer_name || "—"}
-                  </td>
-
-                  <td className="p-4 text-sm text-[#5c5461] max-w-[280px] truncate">
-                    {req.short_summary}
-                  </td>
-
-                  <td className="p-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        urgencyStyles[req.urgency] || "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {req.urgency?.toUpperCase()}
-                    </span>
-                  </td>
-
-                  <td className="p-4 text-sm text-[#5c5461]">
-                    {formatDate(req.created_at)}
-                  </td>
-
-                  <td className="p-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        statusStyles[req.status]
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-                  </td>
-
-                  <td className="p-4 text-right">
-                    <button
-                      disabled={req.status !== "ACCEPTED"}
-                      className={`font-bold ${
-                        req.status === "ACCEPTED"
-                          ? "text-[#a411d4] hover:underline"
-                          : "text-gray-400 cursor-not-allowed"
-                      }`}
-                    >
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Footer */}
-      <p className="text-xs text-center text-gray-400 italic mt-10">
-        Protected by Attorney-Client Privilege. All data is encrypted.
-      </p>
     </div>
   );
 }

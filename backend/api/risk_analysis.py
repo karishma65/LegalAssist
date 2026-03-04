@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from database.db import SessionLocal
+from database.db import get_db
 from database.models import Case
 from ai.llm_service import analyze_risks
 from auth.dependencies import (
     require_lawyer,
-    require_client,
     get_current_user
 )
 import json
@@ -14,63 +13,107 @@ router = APIRouter(prefix="/analysis", tags=["risk-analysis"])
 
 
 # ==================================================
-# LAWYER → GENERATE AI RISK ANALYSIS (ONCE)
+# LAWYER → GENERATE / RE-GENERATE AI RISK ANALYSIS
 # ==================================================
 @router.post("/risk/{case_id}", dependencies=[Depends(require_lawyer)])
 def generate_risk_analysis(
     case_id: str,
+    db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    db: Session = SessionLocal()
-
     case = db.query(Case).filter(Case.case_id == case_id).first()
+
     if not case:
-        db.close()
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # 🔐 Only assigned lawyer
+    # 🔐 Only assigned lawyer can generate risk
     if str(case.lawyer_id) != user["user_id"]:
-        db.close()
         raise HTTPException(status_code=403, detail="Access denied")
-
-    # 🔐 Case must be active
-    if case.status != "ACTIVE":
-        db.close()
-        raise HTTPException(
-            status_code=400,
-            detail="Risk analysis allowed only for active cases"
-        )
 
     # 🔐 Required data check
     if not case.facts or not case.claims:
-        db.close()
         raise HTTPException(
             status_code=400,
             detail="Facts and claims must exist before risk analysis"
         )
 
-    facts = case.facts
-    claims = case.claims or []
-    evidence = case.evidence or {}
-    answers = json.loads(case.mock_answers) if case.mock_answers else []
+    # ============================
+    # SAFE JSON PARSING
+    # ============================
+    try:
+        facts = json.loads(case.facts) if case.facts else {}
+    except Exception:
+        facts = case.facts
 
-    # 🔹 AI performs risk analysis
-    risk_report = analyze_risks(
-        facts=facts,
-        claims=claims,
-        evidence=evidence,
-        answers=answers
-    )
+    try:
+        claims = json.loads(case.claims) if case.claims else []
+    except Exception:
+        claims = []
 
+    try:
+        evidence = case.evidence if case.evidence else {}
+    except Exception:
+        evidence = {}
+
+    try:
+        answers = json.loads(case.mock_answers) if case.mock_answers else []
+    except Exception:
+        answers = []
+
+    # ============================
+    # SAFE AI EXECUTION
+    # ============================
+    try:
+        risk_report = analyze_risks(
+            facts=facts,
+            claims=claims,
+            evidence=evidence,
+            answers=answers
+        )
+
+        # If AI returned string instead of dict → try parsing
+        if isinstance(risk_report, str):
+            try:
+                risk_report = json.loads(risk_report)
+            except Exception:
+                print("⚠️ Invalid JSON from AI. Using empty risk structure.")
+                risk_report = {}
+
+    except Exception as e:
+        print("🔥 Error in analyze_risks:", str(e))
+
+        # Safe fallback structure
+        risk_report = {
+            "weak_claims": [],
+            "loopholes": [],
+            "contradictions": [],
+            "possible_opponent_challenges": [],
+            "jurisdiction_or_limitation_risks": []
+        }
+
+    # ============================
+    # ENSURE VALID STRUCTURE
+    # ============================
+    if not isinstance(risk_report, dict):
+        risk_report = {}
+
+    # Always ensure required keys exist
+    risk_report.setdefault("weak_claims", [])
+    risk_report.setdefault("loopholes", [])
+    risk_report.setdefault("contradictions", [])
+    risk_report.setdefault("possible_opponent_challenges", [])
+    risk_report.setdefault("jurisdiction_or_limitation_risks", [])
+
+    # Save safely
     case.risk_report = json.dumps(risk_report, indent=2)
     case.stage = "RISK_ANALYSIS"
 
     db.commit()
-    db.close()
 
     return {
         "message": "Risk analysis generated successfully",
-        "case_id": case_id
+        "case_id": case_id,
+        "stage": case.stage
     }
 
 
@@ -80,30 +123,31 @@ def generate_risk_analysis(
 @router.get("/risk/{case_id}")
 def get_risk_analysis(
     case_id: str,
+    db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    db: Session = SessionLocal()
-
     case = db.query(Case).filter(Case.case_id == case_id).first()
+
     if not case:
-        db.close()
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # 🔐 Client or assigned lawyer only
-    if user["user_id"] not in [str(case.client_id), str(case.lawyer_id)]:
-        db.close()
+    # 🔐 Only client or assigned lawyer can view
+    if user["user_id"] not in [
+        str(case.client_id),
+        str(case.lawyer_id)
+    ]:
         raise HTTPException(status_code=403, detail="Access denied")
 
     if not case.risk_report:
-        db.close()
         raise HTTPException(
             status_code=404,
             detail="Risk analysis not generated yet"
         )
 
-    risk_data = json.loads(case.risk_report)
-
-    db.close()
+    try:
+        risk_data = json.loads(case.risk_report)
+    except Exception:
+        risk_data = {}
 
     return {
         "case_id": case_id,

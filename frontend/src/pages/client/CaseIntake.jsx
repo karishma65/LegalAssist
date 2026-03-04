@@ -1,92 +1,117 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ClientProgressBar from "../../components/ClientProgressBar";
 import api from "../../api/axiosInstance";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
 
 export default function CaseIntake() {
-  const { caseId } = useParams(); // ✅ EXISTING CASE ID
+  const { caseId } = useParams();
   const navigate = useNavigate();
 
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  // ✅ Auto hide popup
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const handleSubmit = async () => {
     if (!description.trim()) {
-      alert("Please describe your case");
+      setNotification({
+        type: "error",
+        message: "Please describe your case before continuing.",
+      });
       return;
     }
 
     try {
       setLoading(true);
 
-      // ✅ UPDATE EXISTING CASE (NO NEW CASE CREATION)
       await api.post(`/case/${caseId}/intake`, {
         facts: description,
       });
 
-      // ✅ CONTINUE SEQUENCE
       navigate(`/client/claims/${caseId}`);
-
     } catch (error) {
       console.error(error);
-      alert("Failed to submit case intake");
+      setNotification({
+        type: "error",
+        message: "Failed to submit case intake.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      className="relative flex h-auto min-h-screen w-full flex-col bg-slate-50 overflow-x-hidden"
-      style={{ fontFamily: '"Playfair Display", serif' }}
-    >
-      <div className="flex h-full grow flex-col">
+    <div className="min-h-screen bg-[#F2F8FE] text-[#0F172A]">
 
-        {/* Header */}
-        <header className="flex items-center justify-between bg-white border-b px-10 py-4 shadow-sm">
-          <h2 className="text-lg font-bold text-[#161117]">LegalAI</h2>
-        </header>
+      {/* ✅ Global Header */}
+      <AppHeader role="Client" />
 
-        {/* Progress */}
-        <ClientProgressBar currentStep={1} />
+      {/* ✅ Center Popup */}
+      {notification && (
+        <CenterPopup
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
 
-        {/* Main */}
-        <main className="flex flex-1 justify-center py-10 px-4">
-          <div className="w-full max-w-4xl bg-white rounded-2xl shadow border overflow-hidden">
-            <div className="p-8 space-y-6">
+      {/* Progress Bar */}
+      <ClientProgressBar currentStep={1} />
 
-              <div>
-                <h1 className="text-3xl font-bold text-[#161117]">
-                  Describe your case
-                </h1>
-                <p className="text-slate-500 mt-2">
-                  Provide a detailed description. This will be used to identify
-                  claims and required evidence.
-                </p>
-              </div>
+      {/* Main */}
+      <main className="flex justify-center py-14 px-6">
+        <div className="w-full max-w-5xl bg-white rounded-3xl shadow-md border border-gray-100">
 
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full min-h-[360px] rounded-xl border p-6 text-lg"
-                placeholder="Type your case details here..."
-              />
+          <div className="p-10 space-y-8">
 
-              <div className="flex justify-end">
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="px-8 h-12 rounded-lg bg-[#D78FEE] font-bold"
-                >
-                  {loading ? "Analyzing..." : "Submit"}
-                </button>
-              </div>
+            {/* Title Section */}
+            <div>
+              <h1
+                className="text-4xl font-bold"
+                style={{ fontFamily: '"Playfair Display", serif' }}
+              >
+                Describe Your Case
+              </h1>
 
+              <p className="text-gray-600 mt-3 text-lg max-w-3xl">
+                Provide a detailed explanation of your situation.
+                This information will help identify legal claims and required evidence.
+              </p>
             </div>
-          </div>
-        </main>
 
-      </div>
+            {/* Textarea */}
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full min-h-[360px] rounded-2xl border border-gray-300 p-6 text-lg focus:ring-2 focus:ring-[#5D90FF] outline-none"
+              placeholder="Type your case details here..."
+            />
+
+            {/* Action Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="px-10 h-14 rounded-xl bg-gradient-to-r from-[#5D90FF] to-[#14B8A6] text-white font-bold text-lg hover:opacity-90 transition disabled:opacity-60"
+              >
+                {loading ? "Analyzing..." : "Continue →"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

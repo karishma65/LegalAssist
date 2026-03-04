@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AppHeader from "../../components/AppHeader";
+import CenterPopup from "../../components/CenterPopup";
 import api from "../../api/axiosInstance";
+import LawyerSidebar from "../../components/LawyerSidebar";
+import { Menu } from "lucide-react";
 
 export default function LawyerDashboard() {
   const navigate = useNavigate();
@@ -9,27 +13,34 @@ export default function LawyerDashboard() {
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        // 1️⃣ Logged-in lawyer info
         const meRes = await api.get("/auth/me");
         setLawyerName(meRes.data.username);
 
-        // 2️⃣ Incoming consultation requests
         const reqRes = await api.get("/case-request/incoming");
         setIncomingRequests(reqRes.data || []);
 
-        // 3️⃣ Lawyer's cases
         const caseRes = await api.get("/cases/my");
         setCases(caseRes.data || []);
       } catch (err) {
-        console.error("Lawyer dashboard error:", err);
-        alert(
-          err.response?.data?.detail ||
-          "Failed to load lawyer dashboard"
-        );
+        setNotification({
+          type: "error",
+          message:
+            err.response?.data?.detail ||
+            "Failed to load lawyer dashboard.",
+        });
       } finally {
         setLoading(false);
       }
@@ -40,62 +51,144 @@ export default function LawyerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center font-['Playfair_Display'] text-xl">
+      <div className="min-h-screen flex items-center justify-center bg-[#F2F8FE] text-xl">
         Loading dashboard...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f6f8] font-['Playfair_Display'] text-[#161217]">
+    <div className="flex min-h-screen bg-[#F2F8FE] text-[#0F172A]">
+      <LawyerSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-white border-b px-6 md:px-10 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h2 className="text-xl font-bold">Legal Assist</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-[#7e6685] hidden md:block">
-              Logged in as <strong>{lawyerName}</strong>
-            </span>
-            <button
-              onClick={() => navigate("/logout")}
-              className="px-5 py-2 bg-[#d38be5] rounded-lg font-bold"
-            >
-              Logout
-            </button>
+      <div className="flex-1 flex flex-col">
+
+        {/* HEADER */}
+        <div className="flex items-center bg-gradient-to-r from-[#2563EB] to-[#14B8A6]">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="ml-6 mr-4 p-2 rounded-md bg-white/20 hover:bg-white/30 transition"
+          >
+            <Menu size={22} className="text-white" />
+          </button>
+          <div className="flex-1">
+            <AppHeader role="Lawyer" />
           </div>
         </div>
-      </header>
 
-      {/* MAIN */}
-      <main className="max-w-7xl mx-auto px-6 md:px-10 py-10 flex flex-col gap-10">
+        {/* POPUP */}
+        {notification && (
+          <CenterPopup
+            type={notification.type}
+            message={notification.message}
+            onClose={() => setNotification(null)}
+          />
+        )}
 
-        {/* TITLE */}
-        <div>
-          <h1 className="text-4xl font-black">Lawyer Dashboard</h1>
-          <p className="text-lg text-[#7e6685]">
-            Welcome back, {lawyerName}
-          </p>
-        </div>
+        {/* MAIN */}
+        <main className="flex-1 px-10 py-10 space-y-12 max-w-6xl mx-auto w-full">
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* HERO STRIP */}
+          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-md px-8 py-7 flex justify-between items-center overflow-hidden group hover:shadow-xl transition duration-300">
 
-          {/* INCOMING REQUESTS */}
-          <div className="bg-white rounded-xl border shadow-sm">
-            <div className="p-6 border-b flex justify-between">
-              <div>
-                <h3 className="text-xl font-bold">Incoming Requests</h3>
-                <p className="text-sm text-[#7e6685]">
-                  Review new client requests
-                </p>
-              </div>
-              <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm">
-                {incomingRequests.length} Pending
-              </span>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+
+            <div className="relative">
+              <h1
+                className="text-3xl font-bold"
+                style={{ fontFamily: '"Playfair Display", serif' }}
+              >
+                Welcome, {lawyerName}
+              </h1>
+              <p className="text-gray-500 mt-1">
+                Here’s a quick overview of your activity
+              </p>
             </div>
 
-            <div className="divide-y">
-              {incomingRequests.map((req) => (
+            <div className="relative text-right">
+              <p className="text-sm text-gray-400">Total Active</p>
+              <p className="text-3xl font-bold bg-gradient-to-r from-[#2563EB] to-[#14B8A6] bg-clip-text text-transparent">
+                {cases.length + incomingRequests.length}
+              </p>
+            </div>
+          </div>
+
+          {/* STATS */}
+          <div className="grid md:grid-cols-2 gap-8">
+
+            {/* Pending */}
+            <div className="group relative bg-white rounded-2xl p-7 border border-gray-200 shadow-md hover:shadow-xl transition duration-300 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+
+              <div className="relative flex justify-between items-center">
+                <div>
+                  <p className="text-gray-500 text-sm tracking-wide">
+                    Pending Requests
+                  </p>
+                  <p className="text-4xl font-bold text-[#2563EB] mt-2">
+                    {incomingRequests.length}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => navigate("/lawyer/requests")}
+                  className="px-5 py-2 text-sm font-semibold rounded-full bg-[#2563EB] text-[#f7f9fb] hover:bg-[#2563EB] hover:text-white transition-all duration-300 shadow-sm hover:shadow-md"
+                >
+                  View
+                </button>
+              </div>
+            </div>
+
+            {/* Active Cases */}
+            <div className="group relative bg-white rounded-2xl p-7 border border-gray-200 shadow-md hover:shadow-xl transition duration-300 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-teal-50 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+
+              <div className="relative flex justify-between items-center">
+                <div>
+                  <p className="text-gray-500 text-sm tracking-wide">
+                    Active Cases
+                  </p>
+                  <p className="text-4xl font-bold text-[#14B8A6] mt-2">
+                    {cases.length}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => navigate("/lawyer/cases")}
+                  className="px-5 py-2 text-sm font-semibold rounded-full bg-[#14B8A6] text-[#f2f7f6] hover:bg-[#14B8A6] hover:text-white transition-all duration-300 shadow-sm hover:shadow-md"
+                >
+                  Open
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* INCOMING REQUESTS */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-md hover:shadow-xl transition duration-300">
+
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+              <h2 className="font-semibold text-lg">
+                Recent Incoming Requests
+              </h2>
+
+              <button
+                onClick={() => navigate("/lawyer/requests")}
+                className="px-4 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-[#2563EB] to-[#14B8A6] text-white shadow-md hover:scale-105 hover:shadow-lg transition duration-300"
+              >
+                View All
+              </button>
+            </div>
+
+            {incomingRequests.length === 0 ? (
+              <div className="p-6 text-gray-500 text-sm">
+                No incoming requests
+              </div>
+            ) : (
+              incomingRequests.slice(0, 3).map((req) => (
                 <div
                   key={req.request_id}
                   onClick={() =>
@@ -103,98 +196,77 @@ export default function LawyerDashboard() {
                       state: { requestId: req.request_id },
                     })
                   }
-                  className="px-6 py-4 hover:bg-[#faf8fb] cursor-pointer flex justify-between"
+                  className="px-6 py-5 border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent cursor-pointer transition duration-300"
                 >
-                  <div>
-                    <p className="font-bold">Client</p>
-                    <p className="text-sm text-[#7e6685] truncate max-w-[240px]">
-                      {req.short_summary}
-                    </p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">
+                        Client Consultation
+                      </p>
+                      <p className="text-sm text-gray-500 truncate max-w-md">
+                        {req.short_summary}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`text-xs px-3 py-1 rounded-full font-medium ${
+                        req.urgency === "high"
+                          ? "bg-red-100 text-red-600"
+                          : req.urgency === "medium"
+                          ? "bg-orange-100 text-orange-600"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {req.urgency.toUpperCase()}
+                    </span>
                   </div>
-
-                  <span
-                    className={`text-xs font-bold px-2 py-1 rounded ${
-                      req.urgency === "high"
-                        ? "bg-red-100 text-red-700"
-                        : req.urgency === "medium"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    {req.urgency.toUpperCase()}
-                  </span>
                 </div>
-              ))}
-
-              {incomingRequests.length === 0 && (
-                <p className="p-6 text-sm text-gray-500">
-                  No incoming requests
-                </p>
-              )}
-            </div>
-
-            <div className="p-4 border-t">
-              <button
-                onClick={() => navigate("/lawyer/requests")}
-                className="w-full py-2 border rounded-lg font-bold hover:bg-[#f5e9fa]"
-              >
-                View All Requests →
-              </button>
-            </div>
+              ))
+            )}
           </div>
 
-          {/* MY CASES */}
-          <div className="bg-white rounded-xl border shadow-sm">
-            <div className="p-6 border-b flex justify-between">
-              <div>
-                <h3 className="text-xl font-bold">My Cases</h3>
-                <p className="text-sm text-[#7e6685]">
-                  Active legal matters
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-3xl font-black">{cases.length}</p>
-                <p className="text-xs text-[#7e6685] font-bold">ACTIVE</p>
-              </div>
+          {/* ACTIVE CASES */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-md hover:shadow-xl transition duration-300">
+
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+              <h2 className="font-semibold text-lg">
+                My Active Cases
+              </h2>
+
+              <button
+                onClick={() => navigate("/lawyer/cases")}
+                className="px-4 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-[#14B8A6] to-[#2563EB] text-white shadow-md hover:scale-105 hover:shadow-lg transition duration-300"
+              >
+                View All
+              </button>
             </div>
 
-            <div className="divide-y">
-              {cases.map((c) => (
+            {cases.length === 0 ? (
+              <div className="p-6 text-gray-500 text-sm">
+                No active cases
+              </div>
+            ) : (
+              cases.slice(0, 3).map((c) => (
                 <div
                   key={c.case_id}
                   onClick={() =>
                     navigate(`/lawyer/case-review/${c.case_id}`)
                   }
-                  className="px-6 py-4 hover:bg-[#faf8fb] cursor-pointer"
+                  className="px-6 py-5 border-b border-gray-100 hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent cursor-pointer transition duration-300"
                 >
-                  <p className="font-bold truncate">
+                  <p className="font-medium">
                     Case #{c.case_id.slice(0, 8)}
                   </p>
-                  <p className="text-sm text-[#7e6685]">
+                  <p className="text-sm text-gray-500">
                     Status: {c.status}
                   </p>
                 </div>
-              ))}
-
-              {cases.length === 0 && (
-                <p className="p-6 text-sm text-gray-500">
-                  No active cases
-                </p>
-              )}
-            </div>
-
-            <div className="p-4 border-t">
-              <button
-                onClick={() => navigate("/lawyer/cases")}
-                className="w-full py-2 bg-[#d38be5] rounded-lg font-bold"
-              >
-                Open My Cases
-              </button>
-            </div>
+              ))
+            )}
           </div>
 
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
